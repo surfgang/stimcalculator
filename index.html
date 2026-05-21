@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Stim Calculator</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="header">
+        <h1>Stim Calculator</h1>
+        <p class="subtitle">When did you take your dose?</p>
+      </header>
+
+      <section class="card med-card">
+        <label class="field-label" for="med-select">Medication</label>
+        <select id="med-select" class="select" disabled>
+          <option value="vyvanse">Vyvanse (lisdexamfetamine)</option>
+        </select>
+      </section>
+
+      <section class="card time-card">
+        <p class="field-label">Dose time</p>
+        <div class="picker" id="time-picker" aria-label="Dose time picker">
+          <div class="picker-col" data-col="hour">
+            <div class="picker-highlight" aria-hidden="true"></div>
+            <ul class="picker-list" id="hour-list"></ul>
+          </div>
+          <span class="picker-sep">:</span>
+          <div class="picker-col" data-col="minute">
+            <div class="picker-highlight" aria-hidden="true"></div>
+            <ul class="picker-list" id="minute-list"></ul>
+          </div>
+          <div class="picker-col picker-col--ampm" data-col="ampm">
+            <div class="picker-highlight" aria-hidden="true"></div>
+            <ul class="picker-list" id="ampm-list"></ul>
+          </div>
+        </div>
+        <button type="button" class="now-btn" id="set-now-btn">
+          Set to current time
+        </button>
+      </section>
+
+      <section class="card dose-card">
+        <p class="field-label">Dosage</p>
+        <div class="dose-grid" id="dose-grid" role="radiogroup" aria-label="Vyvanse dosage"></div>
+      </section>
+
+      <section class="results hidden" id="results">
+        <div class="results-header">
+          <h2>Expected timeline</h2>
+          <p class="results-meta" id="results-meta"></p>
+        </div>
+
+        <div class="duration-banner" id="duration-banner"></div>
+
+        <div class="chart-card card">
+          <p class="field-label">Effect over time</p>
+          <div class="chart-wrap" id="timeline-chart"></div>
+        </div>
+
+        <ol class="phase-list" id="phase-list"></ol>
+
+        <p class="disclaimer">
+          Estimates based on published pharmacokinetics (FDA label, adult fasted capsules).
+          Individual response varies — not medical advice.
+        </p>
+      </section>
+    </div>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
