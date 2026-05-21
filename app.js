@@ -489,6 +489,8 @@ const PHASE_COLORS = {
   rising: "#5ec9b0",
   "peak-plasma": "#f0b429",
   "peak-effect": "#f08c42",
+  interpeak: "#7a9e6a",
+  "second-peak": "#e8a838",
   active: "#e86a9a",
   declining: "#b07ad9",
   "wear-off": "#8b9cb3",

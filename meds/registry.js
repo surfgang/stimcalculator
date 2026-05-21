@@ -6,6 +6,14 @@ import {
   RITALIN_DOSES_MG,
   calculateRitalinTimeline,
 } from "./ritalin.js";
+import {
+  RITALIN_XR_DOSES_MG,
+  calculateRitalinXRTimeline,
+} from "./ritalin-xr.js";
+import {
+  DEXTRO_DOSES_MG,
+  calculateDextroamphetamineTimeline,
+} from "./dextroamphetamine.js";
 
 /** @typedef {typeof calculateVyvanseTimeline} CalcTimeline */
 /** @typedef {{ id: string, label: string, doses: number[], defaultDose: number, calculate: CalcTimeline, disclaimer: string }} MedConfig */
@@ -29,6 +37,24 @@ export const MEDICATIONS = {
     calculate: calculateRitalinTimeline,
     disclaimer:
       "Estimates based on published pharmacokinetics (FDA label, Ritalin immediate-release tablets). Individual response varies — not medical advice. Not for Ritalin-SR / Concerta.",
+  },
+  "ritalin-xr": {
+    id: "ritalin-xr",
+    label: "Ritalin XR / LA (methylphenidate ER)",
+    doses: RITALIN_XR_DOSES_MG,
+    defaultDose: 20,
+    calculate: calculateRitalinXRTimeline,
+    disclaimer:
+      "Estimates based on published pharmacokinetics (FDA label, Ritalin LA extended-release capsules, bimodal release). Individual response varies — not medical advice. Not for Concerta or other ER formulations.",
+  },
+  dextroamphetamine: {
+    id: "dextroamphetamine",
+    label: "Dextroamphetamine (Dexedrine IR)",
+    doses: DEXTRO_DOSES_MG,
+    defaultDose: 10,
+    calculate: calculateDextroamphetamineTimeline,
+    disclaimer:
+      "Estimates based on published pharmacokinetics (FDA label, dextroamphetamine immediate-release tablets). Individual response varies — not medical advice. Not for Dexedrine Spansules / ER.",
   },
 };
 

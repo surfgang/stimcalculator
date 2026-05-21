@@ -8,9 +8,8 @@ const PH = H - M.top - M.bottom;
 
 const DEFAULT_FELT_THRESHOLD = 0.18;
 
-/** Piecewise effect curve (0–1) from hours since dose */
-function effectAt(h, s) {
-  const knots = [
+function defaultEffectKnots(s) {
+  return [
     [0, 0],
     [s.onsetMin / 60, 0.06],
     [s.onsetMax / 60, 0.2],
@@ -21,6 +20,12 @@ function effectAt(h, s) {
     [s.totalDurationH, 0.08],
     [s.tailEndH, 0.02],
   ];
+}
+
+/** Piecewise effect curve (0–1) from hours since dose */
+function effectAt(h, timeline) {
+  const s = timeline.scale;
+  const knots = timeline.effectKnots ?? defaultEffectKnots(s);
   if (h <= 0) return 0;
   if (h >= knots[knots.length - 1][0]) return knots[knots.length - 1][1];
   for (let i = 0; i < knots.length - 1; i++) {
@@ -41,7 +46,7 @@ function sampleCurve(timeline, stepMin = 12) {
   const s = timeline.scale;
   const points = [];
   for (let h = 0; h <= endH; h += stepMin / 60) {
-    points.push({ h, level: effectAt(h, s), time: new Date(t0 + h * 3_600_000) });
+    points.push({ h, level: effectAt(h, timeline), time: new Date(t0 + h * 3_600_000) });
   }
   return points;
 }
@@ -167,7 +172,7 @@ export function renderTimelineChart(container, timeline, phaseColors) {
     .map((p) => {
       const h = hoursSince(doseTime, p.time);
       const x = xPos(h, endH);
-      const y = yPos(effectAt(h, timeline.scale));
+      const y = yPos(effectAt(h, timeline));
       const color = phaseColors[p.id] ?? "#fff";
       return `<g class="chart-marker">
         <line class="chart-marker-line" x1="${x.toFixed(1)}" y1="${y.toFixed(1)}" x2="${x.toFixed(1)}" y2="${M.top + PH}"/>
