@@ -7,7 +7,8 @@ import {
 } from "./meds/vyvanse.js";
 
 const ITEM_H = 44;
-const PICKER_PAD = 3;
+/** AM = 0, PM = 1 — only two scroll positions */
+const TOGGLE_MAX_SCROLL = ITEM_H;
 /** Odd repeat count — start in the middle cycle for “infinite” scroll */
 const LOOP_REPEATS = 41;
 const LOOP_MIDDLE = Math.floor(LOOP_REPEATS / 2);
@@ -31,18 +32,33 @@ let selectedDoseMg = MEDICATIONS.vyvanse.defaultDose;
 /** @type {Array<() => void>} */
 const pickerCancelFns = [];
 
-function padItems(listEl, values, formatter = (v) => v) {
-  const pad = Array(PICKER_PAD).fill("");
-  const items = values.map((v) => formatter(v));
-  const all = [...pad, ...items, ...pad];
-  listEl.innerHTML = all
-    .map((label, i) => {
-      const real = i >= PICKER_PAD && i < PICKER_PAD + values.length;
-      const idx = real ? i - PICKER_PAD : -1;
-      return `<li class="picker-item${label === "" ? " picker-item--pad" : ""}" data-index="${idx}">${label}</li>`;
-    })
+/** AM/PM only — two items, no empty padding rows */
+function buildTogglePicker(listEl, values) {
+  listEl.innerHTML = values
+    .map(
+      (v, i) =>
+        `<li class="picker-item" data-value-index="${i}">${v}</li>`
+    )
     .join("");
-  return values;
+  listEl.dataset.toggle = "true";
+  listEl.classList.add("picker-list--toggle");
+}
+
+function isToggleList(listEl) {
+  return listEl.dataset.toggle === "true";
+}
+
+function clampToggleScroll(listEl) {
+  if (listEl.scrollTop < 0) listEl.scrollTop = 0;
+  else if (listEl.scrollTop > TOGGLE_MAX_SCROLL) listEl.scrollTop = TOGGLE_MAX_SCROLL;
+}
+
+function getToggleIndex(listEl) {
+  return Math.round(listEl.scrollTop / ITEM_H) >= 1 ? 1 : 0;
+}
+
+function clampToggleTarget(scrollTop) {
+  return Math.max(0, Math.min(TOGGLE_MAX_SCROLL, scrollTop));
 }
 
 /** Repeat values many times; recenter scroll in the middle band while scrolling */
@@ -130,6 +146,21 @@ function onPickerWheel(e, list) {
   scrollPickerTo(list, next, true);
 }
 
+function onToggleWheel(e, list, col) {
+  e.preventDefault();
+  const idx = getToggleIndex(list);
+  const next = e.deltaY > 0 ? 1 : 0;
+  if (next !== idx) scrollPickerTo(list, next, true);
+  highlightPickerCol(col);
+  updateResults();
+}
+
+function onToggleScroll(list, col) {
+  clampToggleScroll(list);
+  highlightPickerCol(col);
+  updateResults();
+}
+
 const DRAG_FOLLOW = 0.42;
 const COAST_FRICTION = 0.93;
 const COAST_MIN_VELOCITY = 0.35;
@@ -138,16 +169,22 @@ const COAST_MAX_VELOCITY = 28;
 function bindPickerCol(col) {
   const list = col.querySelector(".picker-list");
   const looping = isLoopingList(list);
+  const toggle = isToggleList(list);
   /** @type {{ mode: string, rafId?: number, target: number, velocity: number, pointerId?: number, lastY?: number, lastT?: number, startY?: number, startScroll?: number } | null} */
   let session = null;
   let scrollSyncQueued = false;
+
+  function syncFromScroll() {
+    if (toggle) onToggleScroll(list, col);
+    else onPickerScroll(list, col, looping);
+  }
 
   function queueScrollSync() {
     if (scrollSyncQueued) return;
     scrollSyncQueued = true;
     requestAnimationFrame(() => {
       scrollSyncQueued = false;
-      onPickerScroll(list, col, looping);
+      syncFromScroll();
     });
   }
 
@@ -172,7 +209,7 @@ function bindPickerCol(col) {
       } else {
         list.scrollTop = session.target;
       }
-    } else if (session.mode === "coast") {
+    } else if (session.mode === "coast" && !toggle) {
       list.scrollTop += session.velocity;
       session.velocity *= COAST_FRICTION;
       if (Math.abs(session.velocity) >= COAST_MIN_VELOCITY) {
@@ -182,7 +219,8 @@ function bindPickerCol(col) {
       }
     }
 
-    if (looping) maintainLoop(list);
+    if (toggle) clampToggleScroll(list);
+    else if (looping) maintainLoop(list);
     highlightPickerCol(col);
     queueScrollSync();
 
@@ -206,16 +244,20 @@ function bindPickerCol(col) {
     "scroll",
     () => {
       if (session?.mode === "drag" || session?.mode === "coast") return;
-      onPickerScroll(list, col, looping);
+      syncFromScroll();
     },
     { passive: true }
   );
   list.addEventListener("scrollend", () => {
     if (session) return;
     snapPicker(col);
-    onPickerScroll(list, col, looping);
+    syncFromScroll();
   });
-  list.addEventListener("wheel", (e) => onPickerWheel(e, list), { passive: false });
+  list.addEventListener(
+    "wheel",
+    (e) => (toggle ? onToggleWheel(e, list, col) : onPickerWheel(e, list)),
+    { passive: false }
+  );
 
   list.addEventListener("pointerdown", (e) => {
     if (e.button !== 0) return;
@@ -247,13 +289,22 @@ function bindPickerCol(col) {
     }
     session.lastY = e.clientY;
     session.lastT = now;
-    session.target = session.startScroll - (e.clientY - session.startY);
+    const rawTarget = session.startScroll - (e.clientY - session.startY);
+    session.target = toggle ? clampToggleTarget(rawTarget) : rawTarget;
     ensureTick();
   });
 
   const endDrag = (e) => {
     if (!session || e.pointerId !== session.pointerId) return;
     list.releasePointerCapture(e.pointerId);
+
+    if (toggle) {
+      session.mode = "snap";
+      if (session.rafId) cancelAnimationFrame(session.rafId);
+      session.rafId = undefined;
+      tick();
+      return;
+    }
 
     const flick = Math.max(
       -COAST_MAX_VELOCITY,
@@ -285,7 +336,7 @@ function initPicker() {
   );
   buildLoopingPicker(hourList, hours);
   buildLoopingPicker(minuteList, minutes);
-  padItems(ampmList, ["AM", "PM"]);
+  buildTogglePicker(ampmList, ["AM", "PM"]);
 
   setPickerToNow(true);
 
@@ -303,10 +354,19 @@ function getSelectedIndex(listEl) {
 
 function snapPicker(col, smooth = true) {
   const list = col.querySelector(".picker-list");
+  const useSmooth = smooth && !list.classList.contains("picker-list--dragging");
+
+  if (isToggleList(list)) {
+    const idx = getToggleIndex(list);
+    const top = idx * ITEM_H;
+    if (Math.abs(list.scrollTop - top) < 1) return;
+    scrollPickerTo(list, idx, useSmooth);
+    return;
+  }
+
   const idx = getSelectedIndex(list);
   const top = idx * ITEM_H;
   if (Math.abs(list.scrollTop - top) < 1) return;
-  const useSmooth = smooth && !list.classList.contains("picker-list--dragging");
   scrollPickerTo(list, idx, useSmooth);
 }
 
@@ -334,7 +394,7 @@ function setPickerToNow(instant = false) {
 
   scrollLoopingToValue(hourList, h - 1);
   scrollLoopingToValue(minuteList, now.getMinutes());
-  scrollToIndex(ampmList, ampm + PICKER_PAD);
+  scrollPickerTo(ampmList, ampm, false);
 
   if (instant) {
     requestAnimationFrame(() => {
@@ -355,7 +415,7 @@ function resetPickerToNow() {
 function readPickerTime() {
   const hourIdx = getValueIndex(hourList);
   const minIdx = getValueIndex(minuteList);
-  const ampmIdx = getSelectedIndex(ampmList) - PICKER_PAD;
+  const ampmIdx = getToggleIndex(ampmList);
 
   let hour = hourIdx + 1;
   const minute = minIdx;

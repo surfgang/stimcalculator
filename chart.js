@@ -75,6 +75,36 @@ function escapeXml(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
 }
 
+/** Hour only, e.g. "2 AM" / "4 PM" */
+function formatChartHour(date) {
+  return date.toLocaleTimeString(undefined, { hour: "numeric" });
+}
+
+/** Wall-clock ticks every 2 hours within the chart range */
+function buildXAxisTicks(doseTime, barEnd) {
+  const t0 = doseTime.getTime();
+  const endMs = barEnd.getTime();
+  const ticks = [];
+
+  const cursor = new Date(doseTime);
+  cursor.setMinutes(0, 0, 0);
+  cursor.setHours(Math.floor(cursor.getHours() / 2) * 2);
+
+  while (cursor.getTime() < t0) {
+    cursor.setHours(cursor.getHours() + 2);
+  }
+
+  while (cursor.getTime() <= endMs) {
+    ticks.push({
+      h: (cursor.getTime() - t0) / 3_600_000,
+      time: new Date(cursor.getTime()),
+    });
+    cursor.setHours(cursor.getHours() + 2);
+  }
+
+  return ticks;
+}
+
 /**
  * @param {HTMLElement} container
  * @param {ReturnType<import('./meds/vyvanse.js').calculateVyvanseTimeline>} timeline
@@ -86,9 +116,7 @@ export function renderTimelineChart(container, timeline, phaseColors) {
   const points = sampleCurve(timeline);
 
   const yTicks = [0, 0.5, 1];
-  const xTickStep = endH <= 10 ? 2 : endH <= 14 ? 3 : 4;
-  const xTicks = [];
-  for (let h = 0; h <= endH; h += xTickStep) xTicks.push(h);
+  const xTicks = buildXAxisTicks(doseTime, barEnd);
 
   const rangePhases = phases.filter((p) => p.kind === "range");
   const milestones = phases.filter(
@@ -114,7 +142,7 @@ export function renderTimelineChart(container, timeline, phaseColors) {
     .join("");
 
   const gridV = xTicks
-    .map((h) => {
+    .map(({ h }) => {
       const x = xPos(h, endH).toFixed(1);
       return `<line class="chart-grid chart-grid--v" x1="${x}" y1="${M.top}" x2="${x}" y2="${M.top + PH}"/>`;
     })
@@ -129,10 +157,9 @@ export function renderTimelineChart(container, timeline, phaseColors) {
     .join("");
 
   const xLabels = xTicks
-    .map((h) => {
-      const t = new Date(doseTime.getTime() + h * 3_600_000);
+    .map(({ h, time }) => {
       const x = xPos(h, endH);
-      return `<text class="chart-axis-x" x="${x.toFixed(1)}" y="${H - 10}" text-anchor="middle">${escapeXml(formatClock(t))}</text>`;
+      return `<text class="chart-axis-x" x="${x.toFixed(1)}" y="${H - 10}" text-anchor="middle">${escapeXml(formatChartHour(time))}</text>`;
     })
     .join("");
 

@@ -160,6 +160,10 @@ body {
   cursor: grabbing;
 }
 
+.picker-list--toggle {
+  overscroll-behavior: none;
+}
+
 .picker-list::-webkit-scrollbar {
   display: none;
 }
