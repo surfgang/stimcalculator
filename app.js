@@ -1,7 +1,6 @@
 import { renderTimelineChart } from "./chart.js";
+import { getMedication, MEDICATIONS } from "./meds/registry.js";
 import {
-  VYVANSE_DOSES_MG,
-  calculateVyvanseTimeline,
   formatClock,
   formatClockRange,
   formatDuration,
@@ -24,8 +23,11 @@ const durationBanner = document.getElementById("duration-banner");
 const timelineChart = document.getElementById("timeline-chart");
 const phaseList = document.getElementById("phase-list");
 const setNowBtn = document.getElementById("set-now-btn");
+const medSelect = document.getElementById("med-select");
+const disclaimerEl = document.getElementById("disclaimer");
 
-let selectedDoseMg = 30;
+let selectedMedId = "vyvanse";
+let selectedDoseMg = MEDICATIONS.vyvanse.defaultDose;
 /** @type {Array<() => void>} */
 const pickerCancelFns = [];
 
@@ -375,15 +377,31 @@ function readPickerTime() {
   return d;
 }
 
-function initDoseGrid() {
-  VYVANSE_DOSES_MG.forEach((mg) => {
+function getSelectedMed() {
+  return getMedication(selectedMedId);
+}
+
+function pickDoseForMed(med) {
+  if (med.doses.includes(selectedDoseMg)) return selectedDoseMg;
+  const closest = med.doses.reduce((a, b) =>
+    Math.abs(b - selectedDoseMg) < Math.abs(a - selectedDoseMg) ? b : a
+  );
+  return closest;
+}
+
+function renderDoseGrid() {
+  const med = getSelectedMed();
+  selectedDoseMg = pickDoseForMed(med);
+  doseGrid.setAttribute("aria-label", `${med.label} dosage`);
+  doseGrid.innerHTML = "";
+
+  med.doses.forEach((mg) => {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "dose-btn";
     btn.setAttribute("role", "radio");
     btn.setAttribute("aria-checked", mg === selectedDoseMg ? "true" : "false");
     btn.dataset.mg = String(mg);
-    btn.textContent = `${mg}`;
     btn.innerHTML = `<span class="dose-num">${mg}</span><span class="dose-unit">mg</span>`;
     if (mg === selectedDoseMg) btn.classList.add("dose-btn--active");
     btn.addEventListener("click", () => {
@@ -397,6 +415,12 @@ function initDoseGrid() {
     });
     doseGrid.appendChild(btn);
   });
+}
+
+function onMedChange() {
+  selectedMedId = medSelect.value;
+  renderDoseGrid();
+  updateResults();
 }
 
 const PHASE_COLORS = {
@@ -422,7 +446,8 @@ function renderTimeline(timeline) {
     <span class="duration-label">expected active period</span>
   `;
 
-  resultsMeta.textContent = `${timeline.doseMg} mg Vyvanse at ${formatClock(timeline.doseTime)}`;
+  resultsMeta.textContent = `${timeline.doseMg} mg ${timeline.medName} at ${formatClock(timeline.doseTime)}`;
+  disclaimerEl.textContent = getSelectedMed().disclaimer;
 
   phaseList.innerHTML = phases
     .map((p) => {
@@ -446,12 +471,15 @@ function renderTimeline(timeline) {
 
 function updateResults() {
   const doseTime = readPickerTime();
-  const timeline = calculateVyvanseTimeline(doseTime, selectedDoseMg);
+  const med = getSelectedMed();
+  const timeline = med.calculate(doseTime, selectedDoseMg);
   results.classList.remove("hidden");
   renderTimeline(timeline);
 }
 
 initPicker();
-initDoseGrid();
+renderDoseGrid();
+medSelect.addEventListener("change", onMedChange);
 setNowBtn.addEventListener("click", resetPickerToNow);
+disclaimerEl.textContent = getSelectedMed().disclaimer;
 updateResults();

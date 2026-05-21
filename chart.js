@@ -6,12 +6,7 @@ const M = { top: 18, right: 14, bottom: 38, left: 44 };
 const PW = W - M.left - M.right;
 const PH = H - M.top - M.bottom;
 
-/**
- * ~18% of modeled peak — “noticeably felt” band.
- * Matches our onset phase (~6% at ~1h, ~20% by ~1–1.5h), consistent with
- * clinical reports of Vyvanse onset within about 1–2 hours (FDA label / analog studies).
- */
-const FELT_THRESHOLD = 0.18;
+const DEFAULT_FELT_THRESHOLD = 0.18;
 
 /** Piecewise effect curve (0–1) from hours since dose */
 function effectAt(h, s) {
@@ -173,11 +168,12 @@ export function renderTimelineChart(container, timeline, phaseColors) {
       })()
     : "";
 
-  const feltY = yPos(FELT_THRESHOLD);
+  const feltThreshold = timeline.feltThreshold ?? DEFAULT_FELT_THRESHOLD;
+  const feltY = yPos(feltThreshold);
   const feltLine = `<g class="chart-felt">
     <line class="chart-felt-line" x1="${M.left}" y1="${feltY.toFixed(1)}" x2="${W - M.right}" y2="${feltY.toFixed(1)}"/>
     <text class="chart-felt-label" x="${W - M.right - 2}" y="${feltY - 4}" text-anchor="end">Usually felt</text>
-    <title>~${Math.round(FELT_THRESHOLD * 100)}% of peak — typical threshold for noticeable effect (onset ~1–2h)</title>
+    <title>~${Math.round(feltThreshold * 100)}% of peak — typical threshold for noticeable effect</title>
   </g>`;
 
   const legendExtras = [

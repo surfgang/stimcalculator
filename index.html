@@ -15,8 +15,9 @@
 
       <section class="card med-card">
         <label class="field-label" for="med-select">Medication</label>
-        <select id="med-select" class="select" disabled>
+        <select id="med-select" class="select" aria-label="Medication">
           <option value="vyvanse">Vyvanse (lisdexamfetamine)</option>
+          <option value="ritalin">Ritalin (methylphenidate IR)</option>
         </select>
       </section>
 
@@ -44,7 +45,7 @@
 
       <section class="card dose-card">
         <p class="field-label">Dosage</p>
-        <div class="dose-grid" id="dose-grid" role="radiogroup" aria-label="Vyvanse dosage"></div>
+        <div class="dose-grid" id="dose-grid" role="radiogroup" aria-label="Dosage"></div>
       </section>
 
       <section class="results hidden" id="results">
@@ -62,10 +63,7 @@
 
         <ol class="phase-list" id="phase-list"></ol>
 
-        <p class="disclaimer">
-          Estimates based on published pharmacokinetics (FDA label, adult fasted capsules).
-          Individual response varies — not medical advice.
-        </p>
+        <p class="disclaimer" id="disclaimer"></p>
       </section>
     </div>
 

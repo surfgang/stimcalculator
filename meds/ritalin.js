@@ -1,25 +1,28 @@
 /**
- * Vyvanse (lisdexamfetamine) timing model.
- * References: FDA prescribing info — d-amphetamine Tmax ~3.5h, t½ ~10–11.3h (adults);
- * clinical effect assessments to ~12–13h post-dose.
+ * Ritalin (methylphenidate) immediate-release tablet timing model.
+ * References: FDA label — IR tablet Tmax ~1.9h (range 0.3–4.4h); clinical onset ~20–60 min;
+ * typical effect duration ~3–6h; t½ ~2–3h in adults.
  */
 
-export const VYVANSE_DOSES_MG = [10, 20, 30, 40, 50, 60, 70];
+import { formatClock } from "./vyvanse.js";
 
-const REF_DOSE_MG = 30;
+/** Common single-dose amounts (tablets: 5, 10, 20 mg; higher values = multi-tablet / titrated) */
+export const RITALIN_DOSES_MG = [5, 10, 15, 20, 30, 40, 60];
+
+const REF_DOSE_MG = 20;
 
 /** @param {number} doseMg */
 export function doseScale(doseMg) {
   const delta = (doseMg - REF_DOSE_MG) / 10;
   return {
-    onsetMin: Math.max(45, 60 - delta * 3),
-    onsetMax: Math.max(60, 90 - delta * 4),
-    peakPlasmaH: 3.5,
-    peakEffectH: 3.5 + Math.min(0.5, delta * 0.08),
-    strongUntilH: 8 + delta * 0.35,
-    wearOffStartH: 9 + delta * 0.4,
-    totalDurationH: 12 + delta * 0.35,
-    tailEndH: 13.5 + delta * 0.25,
+    onsetMin: Math.max(15, 22 - delta * 2),
+    onsetMax: Math.max(35, 50 - delta * 3),
+    peakPlasmaH: 1.9,
+    peakEffectH: 2 + Math.min(0.35, delta * 0.06),
+    strongUntilH: 3.2 + delta * 0.28,
+    wearOffStartH: 3.8 + delta * 0.32,
+    totalDurationH: 5 + delta * 0.35,
+    tailEndH: 6.5 + delta * 0.2,
   };
 }
 
@@ -27,7 +30,7 @@ export function doseScale(doseMg) {
  * @param {Date} doseTime
  * @param {number} doseMg
  */
-export function calculateVyvanseTimeline(doseTime, doseMg) {
+export function calculateRitalinTimeline(doseTime, doseMg) {
   const s = doseScale(doseMg);
 
   const addMinutes = (mins) => new Date(doseTime.getTime() + mins * 60_000);
@@ -46,14 +49,14 @@ export function calculateVyvanseTimeline(doseTime, doseMg) {
     {
       id: "dose",
       label: "Dose taken",
-      desc: `${doseMg} mg Vyvanse`,
+      desc: `${doseMg} mg Ritalin (IR)`,
       time: doseTime,
       kind: "milestone",
     },
     {
       id: "onset",
       label: "Onset",
-      desc: "Effects usually becoming noticeable",
+      desc: "Effects often noticeable within ~20–60 min",
       timeStart: onsetStart,
       timeEnd: onsetEnd,
       kind: "range",
@@ -69,21 +72,21 @@ export function calculateVyvanseTimeline(doseTime, doseMg) {
     {
       id: "peak-plasma",
       label: "Peak plasma",
-      desc: "Highest d-amphetamine blood levels (~Tmax)",
+      desc: "Highest methylphenidate levels (~Tmax ~1.9h)",
       time: peakPlasma,
       kind: "milestone",
     },
     {
       id: "peak-effect",
       label: "Peak effect",
-      desc: "Strongest therapeutic effect for many people",
+      desc: "Strongest effect for many people",
       time: peakEffect,
       kind: "milestone",
     },
     {
       id: "active",
       label: "Active window",
-      desc: "Reliable focus / stimulation for most",
+      desc: "Typical 3–6h duration of action (IR)",
       timeStart: peakEffect,
       timeEnd: strongUntil,
       kind: "range",
@@ -91,7 +94,7 @@ export function calculateVyvanseTimeline(doseTime, doseMg) {
     {
       id: "declining",
       label: "Declining",
-      desc: "Effect tapering; may still feel “on it”",
+      desc: "Effect tapering; may still feel stimulated",
       timeStart: strongUntil,
       timeEnd: wearOffStart,
       kind: "range",
@@ -99,7 +102,7 @@ export function calculateVyvanseTimeline(doseTime, doseMg) {
     {
       id: "wear-off",
       label: "Wear-off",
-      desc: "Noticeable drop; crash risk varies by person",
+      desc: "Noticeable drop as levels fall",
       timeStart: wearOffStart,
       timeEnd: likelyEnd,
       kind: "range",
@@ -107,14 +110,14 @@ export function calculateVyvanseTimeline(doseTime, doseMg) {
     {
       id: "end",
       label: "Likely clear",
-      desc: "Most no longer feel medicated (±2h individual variation)",
+      desc: "Most no longer feel medicated (±1h variation)",
       time: likelyEnd,
       kind: "milestone",
     },
     {
       id: "tail",
       label: "Residual tail",
-      desc: `Trace effects possible (t½ ~10–11h); subtle until ~${formatClock(tailEnd)}`,
+      desc: `Subtle effects possible (t½ ~2–3h); faint until ~${formatClock(tailEnd)}`,
       time: tailEnd,
       kind: "milestone",
       muted: true,
@@ -122,37 +125,16 @@ export function calculateVyvanseTimeline(doseTime, doseMg) {
   ];
 
   return {
-    medId: "vyvanse",
-    medName: "Vyvanse",
+    medId: "ritalin",
+    medName: "Ritalin",
     doseMg,
     doseTime,
     scale: s,
-    feltThreshold: 0.18,
+    feltThreshold: 0.22,
     totalDurationH: s.totalDurationH,
     tailEndH: s.tailEndH,
     phases,
     barStart: doseTime,
     barEnd: tailEnd,
   };
-}
-
-/** @param {Date} d */
-export function formatClock(d) {
-  return d.toLocaleTimeString(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-/** @param {Date} d */
-export function formatClockRange(a, b) {
-  return `${formatClock(a)} – ${formatClock(b)}`;
-}
-
-/** @param {number} hours */
-export function formatDuration(hours) {
-  const h = Math.floor(hours);
-  const m = Math.round((hours - h) * 60);
-  if (m === 0) return `${h} hr`;
-  return `${h} hr ${m} min`;
 }

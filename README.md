@@ -1,6 +1,6 @@
 # Stim Calculator
 
-Estimate Vyvanse onset, peak, and wear-off times from your dose time and dosage.
+Estimate stimulant onset, peak, and wear-off times from your dose time and dosage (Vyvanse, Ritalin IR).
 
 ## Run locally
 
@@ -13,4 +13,4 @@ Open [http://localhost:8080](http://localhost:8080). ES modules require a local 
 
 ## Adding medications later
 
-Pharmacology lives in `meds/<med>.js`. Wire new options in `index.html` and branch in `app.js` when you add Ritalin, Dexedrine, etc.
+Pharmacology lives in `meds/<med>.js`. Register new options in `meds/registry.js` and `index.html`.
