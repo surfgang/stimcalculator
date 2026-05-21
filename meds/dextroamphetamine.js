@@ -14,11 +14,12 @@ const REF_DOSE_MG = 10;
 /** @param {number} doseMg */
 export function doseScale(doseMg) {
   const delta = (doseMg - REF_DOSE_MG) / 10;
+  const peakPlasmaH = 2.5 + Math.min(0.4, delta * 0.05);
   return {
     onsetMin: Math.max(18, 25 - delta * 2),
     onsetMax: Math.max(40, 55 - delta * 3),
-    peakPlasmaH: 2.5 + Math.min(0.4, delta * 0.05),
-    peakEffectH: 2 + Math.min(0.4, delta * 0.06),
+    peakPlasmaH,
+    peakEffectH: peakPlasmaH + 0.25 + Math.min(0.2, delta * 0.04),
     strongUntilH: 4 + delta * 0.3,
     wearOffStartH: 4.8 + delta * 0.35,
     totalDurationH: 6 + delta * 0.35,
@@ -79,7 +80,7 @@ export function calculateDextroamphetamineTimeline(doseTime, doseMg) {
     {
       id: "peak-effect",
       label: "Peak effect",
-      desc: "Strongest effect for many people (~1–2h, up to ~3h plasma peak)",
+      desc: "Strongest subjective effect, typically shortly after plasma peak",
       time: peakEffect,
       kind: "milestone",
     },
